@@ -96,97 +96,42 @@ static void smartDelay(unsigned long ms)
 
 
 void prepareTxFrame(uint8_t port) {
+    if (gps.location.isValid()) {
+        int32_t lat_enc = gps.location.lat() * 10000;  // Conversion en entier sur 3 octets
+        int32_t lon_enc = gps.location.lng() * 10000;
 
-  /*
-  //en miliVolts
+        uint16_t alt_enc = (uint16_t)gps.altitude.meters();
+        uint8_t hdop_enc = (uint8_t)(gps.hdop.hdop() * 10);
+        uint8_t sats_enc = (uint8_t)gps.satellites.value();
 
-  //appData[0] = (uint8_t)(batteryVoltage >> 8);//décalage de 8 bit vers la droite, 
-  //4803  donne 0001001011000011 sur 16bit donc reste les 8 1ers bits 00010010  soit 12 hex
-  //Serial.println(appData[4]);
-  
-  //appData[1] = (uint8_t)batteryVoltage;
-  //4803  donne 0001001011000011 donc si uint_8  on prend donc 8bit de droite 11000011 soit C3 hex
-  // quand on concatène 12C3 hex dans un convertisseur hexa vers décimal, cela donne 4803 mV au décodage de la trame LORA
-  //Serial.println(appData[5]);
+        appDataSize = 10; // 10 octets au total
 
-  //calcul pour la température
-  //sur lorawan on obtient 00 74 hex
-  //on concatène 00 et 74 , on convertit hexa vers décimal et on obtient 116 décimal
-  //on reprend la formule de Sylvain  t_byte = (t + 35 )*2  donc partie entière de t=116/2 moins 35 degrés soit 23 degrés
-*/
+        // Encodage de la latitude (24 bits)
+        appData[0] = (lat_enc >> 16) & 0xFF;
+        appData[1] = (lat_enc >> 8) & 0xFF;
+        appData[2] = lat_enc & 0xFF;
 
+        // Encodage de la longitude (24 bits)
+        appData[3] = (lon_enc >> 16) & 0xFF;
+        appData[4] = (lon_enc >> 8) & 0xFF;
+        appData[5] = lon_enc & 0xFF;
 
+        // Encodage de l'altitude (16 bits)
+        appData[6] = (alt_enc >> 8) & 0xFF;
+        appData[7] = alt_enc & 0xFF;
 
+        // Encodage du HDOP et des satellites (8 bits chacun)
+        appData[8] = hdop_enc;
+        appData[9] = sats_enc;
 
-  //la tension batterie
-  uint16_t batteryVoltage = getBatteryVoltage();
-  Serial.print(batteryVoltage);
-  Serial.println( " mV ");
-
-
-  if (gps.location.isValid()) {
-    appDataSize = 10; // nombre total d'octets de la trame envoyée
-    // et à changer selon le nombre de balances et capteurs
-
-    appData[0] = (uint8_t)(batteryVoltage >> 8);
-
-    appData[1] = (uint8_t)batteryVoltage;
-
-
-    char txpacket[50]; // Ensure txpacket is defined with sufficient size
-
-    sprintf(txpacket, "lat: %d.%d lng: %d.%d", 
-        (int)gps.location.lat(), 
-        abs(fracPart(gps.location.lat(), 6)), 
-        (int)gps.location.lng(), 
-        abs(fracPart(gps.location.lng(), 6)));
-
-    Serial.println(txpacket);
-
-
-    appData[2] = (uint8_t)gps.location.lat();
-    Serial.print( " lat ");
-    Serial.println(appData[2]);
-    
-    appData[3] = (uint8_t)((abs(fracPart(gps.location.lat(), 6)) )>> 16);
-    Serial.print( " lat ");
-    Serial.println(appData[3]);
-    appData[4] = (uint8_t)((abs(fracPart(gps.location.lat(), 6)) )>> 8);
-    Serial.print( " lat ");
-    Serial.println(appData[4]);
-    appData[5] = (uint8_t)((abs(fracPart(gps.location.lat(), 6)) ));
-    Serial.print( " lat ");
-    Serial.println(appData[5]);
-    //Serial.println( " lat ");
-    //Serial.print(appData[3]);
-
-    //appData[4] = (uint8_t)(abs(fracPart(gps.location.lat(), 6)));
-    //Serial.println( " lat ");
-    //Serial.print(appData[4]);
-    
-    appData[6] = (uint8_t)(gps.location.lng());
-    Serial.print( " lon ");
-    Serial.println(appData[6]);
-
-    appData[7] = (uint8_t)((abs(fracPart(gps.location.lng(), 6)) )>> 16);
-    Serial.print( " lon ");
-    Serial.println(appData[7]);
-    appData[8] = (uint8_t)((abs(fracPart(gps.location.lng(), 6)) )>> 8);
-    Serial.print( " lon ");
-    Serial.println(appData[8]);
-    appData[9] = (uint8_t)((abs(fracPart(gps.location.lng(), 6)) ));
-    Serial.print( " lon ");
-    Serial.println(appData[9]);
-    //Serial.println( " lon ");
-    //Serial.print(appData[6]);
-
-    //appData[7] = (uint8_t)(abs(fracPart(gps.location.lng(), 6)));
-    //Serial.println( " lon ");
-    //Serial.print(appData[7]);
-
-  } else {
-    Serial.println("GPS location not valid");
-  }
+        Serial.print("Latitude envoyée : "); Serial.println(gps.location.lat(), 6);
+        Serial.print("Longitude envoyée : "); Serial.println(gps.location.lng(), 6);
+        Serial.print("Altitude envoyée : "); Serial.println(gps.altitude.meters());
+        Serial.print("HDOP envoyé : "); Serial.println(gps.hdop.hdop());
+        Serial.print("Satellites envoyés : "); Serial.println(gps.satellites.value());
+    } else {
+        Serial.println("Erreur : Données GPS non valides !");
+    }
 }
 
 /* OTAA para c'est ce OTAA paramêtre qui est utilisé */
